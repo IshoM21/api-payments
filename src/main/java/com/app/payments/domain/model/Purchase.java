@@ -54,4 +54,16 @@ public class Purchase {
 	@Builder.Default
 	@Enumerated(EnumType.STRING)
 	private PurchaseStatus status = PurchaseStatus.ACTIVE;
+	
+	// NUEVOS CAMPOS PARA PLAZOS
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean installmentEnabled = false;  // compra a plazos sí/no
+
+    @Column
+    private Integer installmentCount;            // número de plazos
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal installmentAmount;        // monto sugerido por plazo
 }
