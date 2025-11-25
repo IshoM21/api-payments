@@ -35,6 +35,10 @@ public final class PurchaseMapper {
                 .remainingAmount(remaining.max(BigDecimal.ZERO))
                 .status(e.getStatus())
                 .createdAt(e.getCreatedAt())
+             // 👇 nuevos campos
+                .installmentEnabled(e.isInstallmentEnabled())
+                .installmentCount(e.getInstallmentCount())
+                .installmentAmount(e.getInstallmentAmount())
                 .build();
     }
 }

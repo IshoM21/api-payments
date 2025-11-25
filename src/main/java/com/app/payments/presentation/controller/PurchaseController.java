@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.app.payments.application.service.PurchaseService;
 import com.app.payments.domain.model.dto.PageResponse;
+import com.app.payments.domain.model.dto.purchase.InstallmentSimulationRequest;
+import com.app.payments.domain.model.dto.purchase.InstallmentSimulationResponse;
 import com.app.payments.domain.model.dto.purchase.PurchaseCreateRequest;
 import com.app.payments.domain.model.dto.purchase.PurchaseResponse;
 import com.app.payments.domain.model.dto.purchase.PurchaseUpdateRequest;
@@ -83,4 +85,33 @@ public class PurchaseController {
 	public void delete(@PathVariable Long id) {
 		purchaseService.delete(id);
 	}
+	
+	@PostMapping("/installments/simulate")
+    @Operation(
+            summary = "Simular pago a plazos",
+            description = "Calcula el monto sugerido por plazo según el total y el número de plazos, sin guardar nada en la BD.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Datos para la simulación de plazos",
+                    content = @io.swagger.v3.oas.annotations.media.Content(
+                            mediaType = "application/json",
+                            examples = {
+                            		@io.swagger.v3.oas.annotations.media.ExampleObject(
+                                            name = "Ejemplo simulación",
+                                            value = """
+                                                    {
+                                                      "totalAmount": 10000.00,
+                                                      "installmentCount": 10
+                                                    }
+                                                    """
+                                    )
+                            }
+                    )
+            )
+    )
+    public ResponseEntity<InstallmentSimulationResponse> simulateInstallments(
+            @Validated @org.springframework.web.bind.annotation.RequestBody InstallmentSimulationRequest request) {
+
+        InstallmentSimulationResponse response = purchaseService.simulationInstallments(request);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
 }

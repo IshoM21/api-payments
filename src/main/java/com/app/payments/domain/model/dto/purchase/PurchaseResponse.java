@@ -19,5 +19,9 @@ public class PurchaseResponse {
     private BigDecimal remainingAmount; // total - paid
     private PurchaseStatus status;
     private LocalDateTime createdAt;
-	
+    // 👇 NUEVOS CAMPOS
+
+    private boolean installmentEnabled;
+    private Integer installmentCount;
+    private BigDecimal installmentAmount;
 }

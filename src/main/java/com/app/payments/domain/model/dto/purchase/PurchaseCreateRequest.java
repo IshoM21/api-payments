@@ -19,4 +19,11 @@ public class PurchaseCreateRequest {
 	
 	@NotNull @DecimalMin(value = "0.00") @Digits(integer = 12, fraction = 2)
     private BigDecimal totalAmount;
+	
+	// Para definir si es a plazos o no
+    @Builder.Default
+    private Boolean installmentEnabled = false;
+
+    // Número de plazos (solo obligatorio si installmentEnabled = true)
+    private Integer installmentCount;
 }

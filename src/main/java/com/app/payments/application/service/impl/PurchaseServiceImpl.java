@@ -1,6 +1,7 @@
 package com.app.payments.application.service.impl;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -15,6 +16,8 @@ import com.app.payments.application.service.PurchaseService;
 import com.app.payments.domain.model.Customer;
 import com.app.payments.domain.model.Purchase;
 import com.app.payments.domain.model.dto.PageResponse;
+import com.app.payments.domain.model.dto.purchase.InstallmentSimulationRequest;
+import com.app.payments.domain.model.dto.purchase.InstallmentSimulationResponse;
 import com.app.payments.domain.model.dto.purchase.PurchaseCreateRequest;
 import com.app.payments.domain.model.dto.purchase.PurchaseResponse;
 import com.app.payments.domain.model.dto.purchase.PurchaseUpdateRequest;
@@ -46,11 +49,27 @@ public class PurchaseServiceImpl implements PurchaseService{
 
         Purchase entity = PurchaseMapper.toEntity(request);
         entity.setCustomer(customer);
+        
+        if(Boolean.TRUE.equals(request.getInstallmentEnabled())) {
+        	Integer count = request.getInstallmentCount();
+        	if(count == null || count <= 1) {
+        		throw new ConflictException("installmentCount debe ser >= 1 cuando installmentEnabled es true");
+        	}
+        	BigDecimal perInstallment = request.getTotalAmount()
+        			.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP);
+        	entity.setInstallmentEnabled(true);
+        	entity.setInstallmentCount(count);
+        	entity.setInstallmentAmount(perInstallment);
+        } else {
+        	entity.setInstallmentEnabled(false);
+        	entity.setInstallmentCount(null);
+        	entity.setInstallmentAmount(null);
+        }
+        
 
         Purchase saved = purchaseRepository.save(entity);
         BigDecimal paid = paymentsRepository.sumAmountByPurchaseId(saved.getId()).orElse(BigDecimal.ZERO);
         updateStatusByAmounts(saved, paid);
-
         return PurchaseMapper.toResponse(saved, paid);
 	}
 
@@ -146,6 +165,27 @@ public class PurchaseServiceImpl implements PurchaseService{
             e.setStatus(PurchaseStatus.ACTIVE);
         }
     }
+
+	@Override
+	public InstallmentSimulationResponse simulationInstallments(InstallmentSimulationRequest r) {
+		// TODO Auto-generated method stub
+		BigDecimal total = r.getTotalAmount();
+		Integer count = r.getInstallmentCount();
+		
+		if(count == null || count < 1) {
+			throw new ConflictException("installmentCount debe ser >= 1");
+		}
+		if(total == null || total.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ConflictException("El total debe ser mayor a 0");
+		}
+		BigDecimal perInstallment = total.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP);
+		
+		return InstallmentSimulationResponse.builder()
+				.totalAmount(total)
+				.installmentAmount(perInstallment)
+				.installmentCount(count)
+				.build();
+	}
 
 	
 }
