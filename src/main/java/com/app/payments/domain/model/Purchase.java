@@ -53,7 +53,7 @@ public class Purchase {
 	
 	@Builder.Default
 	@Enumerated(EnumType.STRING)
-	private PurchaseStatus status = PurchaseStatus.ACTIVE;
+	private PurchaseStatus status = PurchaseStatus.ACTIVO;
 	
 	// NUEVOS CAMPOS PARA PLAZOS
 

@@ -33,7 +33,7 @@ public class PaymentServiceImpl implements PaymentService{
 		Purchase purchase = purchaseRepository.findById(purchaseId)
                 .orElseThrow(() -> new NotFoundException("Compra no encontrada"));
 
-        if (purchase.getStatus() == PurchaseStatus.CANCELED) {
+        if (purchase.getStatus() == PurchaseStatus.CANCELADO) {
             throw new ConflictException("No se pueden registrar pagos en una compra cancelada");
         }
 
@@ -52,7 +52,7 @@ public class PaymentServiceImpl implements PaymentService{
 
         // actualizar estado de la compra si quedó liquidada
         if (newTotalPaid.compareTo(purchase.getTotalAmount()) >= 0) {
-            purchase.setStatus(PurchaseStatus.PAID);
+            purchase.setStatus(PurchaseStatus.PAGADO);
             purchaseRepository.save(purchase);
         }
 

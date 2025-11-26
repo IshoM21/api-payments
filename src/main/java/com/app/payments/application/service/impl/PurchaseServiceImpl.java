@@ -95,7 +95,7 @@ public class PurchaseServiceImpl implements PurchaseService{
 		// TODO Auto-generated method stub
 		Purchase entity = purchaseRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Compra no encontrada"));
-        entity.setStatus(PurchaseStatus.CANCELED);
+        entity.setStatus(PurchaseStatus.CANCELADO);
         purchaseRepository.save(entity);
 	}
 
@@ -158,11 +158,11 @@ public class PurchaseServiceImpl implements PurchaseService{
 	
 	/** Marca PAID si total <= pagado y no está cancelada; si no, ACTIVE */
     private void updateStatusByAmounts(Purchase e, BigDecimal paid) {
-        if (e.getStatus() == PurchaseStatus.CANCELED) return;
+        if (e.getStatus() == PurchaseStatus.CANCELADO) return;
         if (e.getTotalAmount().compareTo(paid) <= 0) {
-            e.setStatus(PurchaseStatus.PAID);
+            e.setStatus(PurchaseStatus.PAGADO);
         } else {
-            e.setStatus(PurchaseStatus.ACTIVE);
+            e.setStatus(PurchaseStatus.ACTIVO);
         }
     }
 
