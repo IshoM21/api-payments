@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+
+# ===== CONFIGURACIÓN =====
+
+# Ruta a tu llave .pem
+KEY_PATH="/Volumes/SSD - 1TB/Payments/keys-payments.pem"
+
+# Usuario y host de la EC2
+EC2_USER="ec2-user"
+EC2_HOST="ec2-18-222-185-228.us-east-2.compute.amazonaws.com"   # ej: ec2-3-120-45-67.compute.amazonaws.com o 3.120.45.67
+
+# Nombre del servicio systemd (sin .service)
+SERVICE_NAME="payments"
+
+# Nombre del JAR generado por Maven (ajusta si cambia la versión)
+LOCAL_JAR="target/Payments-0.0.1-SNAPSHOT.jar"
+
+# Ruta remota donde vive el JAR en la EC2
+REMOTE_DIR="/opt/payments"
+REMOTE_JAR="$REMOTE_DIR/Payments.jar"
+
+# URL del health check (desde la EC2)
+HEALTH_URL="http://localhost:8080/actuator/health"
+
+# ===== NO CAMBIAR DE AQUÍ PARA ABAJO (salvo que sepas lo que haces) =====
+
+set -e  # Detener script si algo falla en la parte local
+
+echo "👉 0/5 - Validando que el JAR local exista después de compilar..."
+echo "👉 1/5 - Construyendo proyecto con Maven..."
+mvn clean package -DskipTests
+
+if [ ! -f "$LOCAL_JAR" ]; then
+  echo "❌ No se encontró el JAR en $LOCAL_JAR. Revisa la versión o el nombre."
+  exit 1
+fi
+
+echo "✅ Build completo."
+
+echo "👉 2/5 - Copiando JAR a la EC2..."
+scp -i "$KEY_PATH" "$LOCAL_JAR" "$EC2_USER@$EC2_HOST:$REMOTE_JAR.tmp"
+
+echo "✅ Copia realizada."
+
+echo "👉 3/5 - Ejecutando despliegue remoto (backup, reemplazo, restart, health-check, rollback si es necesario)..."
+
+ssh -i "$KEY_PATH" "$EC2_USER@$EC2_HOST" <<EOF
+  set -e
+
+  echo "🔍 Verificando que el servicio '$SERVICE_NAME' exista en systemd..."
+  if ! systemctl list-unit-files | grep -q "^$SERVICE_NAME.service"; then
+    echo "❌ El servicio '$SERVICE_NAME.service' no existe en esta máquina."
+    exit 1
+  fi
+
+  if [ ! -d "$REMOTE_DIR" ]; then
+    echo "❌ El directorio $REMOTE_DIR no existe."
+    exit 1
+  fi
+
+  if [ ! -f "$REMOTE_JAR.tmp" ]; then
+    echo "❌ No se encontró el archivo temporal $REMOTE_JAR.tmp. Algo falló en la copia."
+    exit 1
+  fi
+
+  TIMESTAMP=\$(date +%Y%m%d%H%M%S)
+  BACKUP_JAR="$REMOTE_JAR.\$TIMESTAMP.bak"
+
+  echo "⏹️ Deteniendo servicio $SERVICE_NAME..."
+  sudo systemctl stop $SERVICE_NAME || true
+
+  if [ -f "$REMOTE_JAR" ]; then
+    echo "📦 Creando backup del JAR actual en \$BACKUP_JAR..."
+    sudo cp "$REMOTE_JAR" "\$BACKUP_JAR"
+  else
+    echo "ℹ️ No hay JAR previo, no se creará backup."
+  fi
+
+  echo "📁 Reemplazando JAR por la nueva versión..."
+  sudo mv "$REMOTE_JAR.tmp" "$REMOTE_JAR"
+  sudo chown $EC2_USER:$EC2_USER "$REMOTE_JAR"
+
+  echo "▶️ Iniciando servicio $SERVICE_NAME..."
+  sudo systemctl start $SERVICE_NAME
+
+  echo "⏱️ Esperando unos segundos para que levante la app..."
+  sleep 20
+
+  echo "🔍 Verificando estado del servicio..."
+  if ! sudo systemctl is-active --quiet $SERVICE_NAME; then
+    echo "❌ El servicio no quedó activo. Iniciando rollback..."
+
+    if [ -f "\$BACKUP_JAR" ]; then
+      echo "⏹️ Deteniendo servicio para rollback..."
+      sudo systemctl stop $SERVICE_NAME || true
+
+      echo "♻️ Restaurando JAR desde backup..."
+      sudo mv "\$BACKUP_JAR" "$REMOTE_JAR"
+      sudo chown $EC2_USER:$EC2_USER "$REMOTE_JAR"
+
+      echo "▶️ Iniciando servicio con la versión anterior..."
+      sudo systemctl start $SERVICE_NAME
+
+      echo "✔️ Rollback completado (servicio levantado con JAR anterior)."
+      exit 1
+    else
+      echo "⚠️ No hay backup disponible para rollback. El servicio puede estar caído."
+      exit 1
+    fi
+  fi
+
+  echo "🌡️ Validando health check en $HEALTH_URL ..."
+  # -s silencioso, -f falla si HTTP != 2xx/3xx
+  if ! curl -sf "$HEALTH_URL" | grep -q "UP"; then
+    echo "❌ Health check NO devolvió status UP. Iniciando rollback..."
+
+    if [ -f "\$BACKUP_JAR" ]; then
+      echo "⏹️ Deteniendo servicio para rollback..."
+      sudo systemctl stop $SERVICE_NAME || true
+
+      echo "♻️ Restaurando JAR desde backup..."
+      sudo mv "\$BACKUP_JAR" "$REMOTE_JAR"
+      sudo chown $EC2_USER:$EC2_USER "$REMOTE_JAR"
+
+      echo "▶️ Iniciando servicio con la versión anterior..."
+      sudo systemctl start $SERVICE_NAME
+
+      echo "✔️ Rollback completado (servicio levantado con JAR anterior)."
+      exit 1
+    else
+      echo "⚠️ No hay backup disponible para rollback después del fallo de health check."
+      exit 1
+    fi
+  fi
+
+  echo "✅ Despliegue exitoso, servicio activo y health UP."
+  echo "Estado del servicio:"
+  sudo systemctl status $SERVICE_NAME --no-pager -l | head -n 20
+
+EOF
+
+echo "✅ 5/5 - Despliegue completado sin errores."
