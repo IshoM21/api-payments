@@ -19,9 +19,9 @@ public class CorsConfig {
         config.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "http://localhost:4200",
-                "*"
+                "http://localhost:4200"
         ));
+//        config.setAllowedOrigins(List.of("*"));
 
         // Métodos permitidos
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
