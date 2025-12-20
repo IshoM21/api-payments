@@ -16,10 +16,9 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         // Orígenes permitidos (local development)
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://localhost:4200"
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "https://*.vercel.app"
         ));
 //        config.setAllowedOrigins(List.of("*"));
 
@@ -27,10 +26,13 @@ public class CorsConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
         // Headers permitidos
-        config.setAllowedHeaders(List.of("*"));
+//        config.setAllowedHeaders(List.of("*"));
+        // Mejor explícitos para seguridad:
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setExposedHeaders(List.of("Authorization"));
 
         // Permitir credenciales si luego usarás cookies / auth
-        config.setAllowCredentials(true);
+        config.setAllowCredentials(false);
 
         // Tiempo de cache de preflight requests
         config.setMaxAge(3600L);

@@ -16,6 +16,7 @@ import com.app.payments.domain.repository.PaymentsRepository;
 import com.app.payments.domain.repository.PurchaseRepository;
 import com.app.payments.presentation.advice.ConflictException;
 import com.app.payments.presentation.advice.NotFoundException;
+import com.app.payments.security.AuthenticatedUserService;
 
 @Service
 public class PaymentServiceImpl implements PaymentService{
@@ -25,6 +26,9 @@ public class PaymentServiceImpl implements PaymentService{
 	
 	@Autowired
 	private PaymentsRepository paymentsRepository;
+	
+	@Autowired
+	private AuthenticatedUserService authenticatedUserService;
 	
 	
 	@Override
@@ -48,6 +52,7 @@ public class PaymentServiceImpl implements PaymentService{
         }
 
         var payment = PaymentMapper.toEntity(request, purchase);
+        payment.setCreatedBy(authenticatedUserService.getCurrentUser());
         var saved = paymentsRepository.save(payment);
 
         // actualizar estado de la compra si quedó liquidada

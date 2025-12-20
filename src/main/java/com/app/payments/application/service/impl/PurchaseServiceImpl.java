@@ -27,6 +27,7 @@ import com.app.payments.domain.repository.PaymentsRepository;
 import com.app.payments.domain.repository.PurchaseRepository;
 import com.app.payments.presentation.advice.ConflictException;
 import com.app.payments.presentation.advice.NotFoundException;
+import com.app.payments.security.AuthenticatedUserService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -41,6 +42,8 @@ public class PurchaseServiceImpl implements PurchaseService{
 	private CustomerRepository customerRepository;
 	@Autowired
 	private PaymentsRepository paymentsRepository;
+	@Autowired
+	private AuthenticatedUserService authenticatedUserService;
 	
 	@Override
 	public PurchaseResponse create(PurchaseCreateRequest request) {
@@ -49,6 +52,7 @@ public class PurchaseServiceImpl implements PurchaseService{
 
         Purchase entity = PurchaseMapper.toEntity(request);
         entity.setCustomer(customer);
+        entity.setCreatedBy(authenticatedUserService.getCurrentUser());
         
         if(Boolean.TRUE.equals(request.getInstallmentEnabled())) {
         	Integer count = request.getInstallmentCount();

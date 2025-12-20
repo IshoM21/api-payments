@@ -20,5 +20,4 @@ public class PaymentResponse {
     private PaymentMethod method;
     private LocalDateTime paidAt;
     private String note;
-
 }

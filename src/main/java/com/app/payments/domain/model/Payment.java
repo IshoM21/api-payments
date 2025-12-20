@@ -12,6 +12,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
@@ -55,4 +56,8 @@ public class Payment {
 	
 	@Size(max = 255)
 	private String note;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "created_by_user_id")
+	private UserAccount createdBy;
 }
